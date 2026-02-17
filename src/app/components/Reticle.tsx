@@ -9,14 +9,14 @@ export default function Reticle() {
 
   useFrame(() => {
     if (meshRef.current) {
-      meshRef.current.rotation.y += 0.02;
+      meshRef.current.rotation.z += 0.02;
     }
   });
 
   return (
-    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.08, 0.1, 32]} />
-      <meshBasicMaterial color="#4285F4" />
+    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <ringGeometry args={[0.15, 0.2, 32]} />
+      <meshBasicMaterial color="#00ff00" side={THREE.DoubleSide} />
     </mesh>
   );
 }

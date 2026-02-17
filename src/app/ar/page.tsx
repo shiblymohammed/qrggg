@@ -5,15 +5,16 @@ import { XR, createXRStore, useXRHitTest } from "@react-three/xr";
 import { useState, useEffect, useRef } from "react";
 import FoodModel from "../components/FoodModel";
 import Reticle from "../components/Reticle";
-import type { Matrix4 } from "three";
 
 const store = createXRStore();
 
 function ARScene({ items, onReticlePosition }: any) {
   const reticleRef = useRef<any>(null);
+  const [reticleVisible, setReticleVisible] = useState(false);
 
   useXRHitTest((results: any[], getWorldMatrix: any) => {
     if (results.length > 0 && reticleRef.current) {
+      setReticleVisible(true);
       const hitMatrix = getWorldMatrix(results[0]);
       hitMatrix.decompose(
         reticleRef.current.position,
@@ -21,17 +22,22 @@ function ARScene({ items, onReticlePosition }: any) {
         reticleRef.current.scale
       );
       onReticlePosition(reticleRef.current.position.toArray());
+    } else {
+      setReticleVisible(false);
     }
   }, "viewer");
 
   return (
     <>
-      <ambientLight intensity={1} />
-      <directionalLight position={[0, 5, 5]} intensity={1} />
+      <ambientLight intensity={2} />
+      <directionalLight position={[0, 10, 5]} intensity={2} />
+      <pointLight position={[0, 2, 0]} intensity={1} />
 
-      <group ref={reticleRef}>
-        <Reticle />
-      </group>
+      {reticleVisible && (
+        <group ref={reticleRef}>
+          <Reticle />
+        </group>
+      )}
 
       {items.map((item: any) => (
         <FoodModel
@@ -40,6 +46,12 @@ function ARScene({ items, onReticlePosition }: any) {
           position={item.position}
         />
       ))}
+
+      {/* Always visible test cube to verify AR is working */}
+      <mesh position={[0, 0, -0.5]}>
+        <boxGeometry args={[0.1, 0.1, 0.1]} />
+        <meshStandardMaterial color="red" />
+      </mesh>
     </>
   );
 }
