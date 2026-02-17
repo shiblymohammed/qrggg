@@ -15,7 +15,8 @@ export function useHitTest() {
 
     session.requestReferenceSpace("viewer").then((space) => {
       viewerSpace.current = space;
-      session.requestHitTestSource({ space }).then((source) => {
+      // Type assertion for hit-test API
+      (session as any).requestHitTestSource?.({ space }).then((source: XRHitTestSource) => {
         hitTestSource.current = source;
       });
     });
@@ -30,6 +31,8 @@ export function useHitTest() {
     if (!frame || !hitTestSource.current) return;
 
     const referenceSpace = gl.xr.getReferenceSpace();
+    if (!referenceSpace) return;
+
     const hitTestResults = frame.getHitTestResults(hitTestSource.current);
 
     if (hitTestResults.length > 0) {
