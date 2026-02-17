@@ -11,6 +11,12 @@ const store = createXRStore();
 export default function ARPage() {
   const [objects, setObjects] = useState<any[]>([]);
   const [selected, setSelected] = useState("burger");
+  const [inAR, setInAR] = useState(false);
+
+  const startAR = async () => {
+    await store.enterAR();
+    setInAR(true);
+  };
 
   const placeObject = () => {
     // Place object 1.5 meters in front of camera
@@ -26,24 +32,26 @@ export default function ARPage() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "black" }}>
-      <button
-        onClick={() => store.enterAR()}
-        style={{
-          position: "absolute",
-          top: "20px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 10,
-          padding: "12px 24px",
-          background: "white",
-          border: "none",
-          borderRadius: "25px",
-          fontSize: "16px",
-          cursor: "pointer",
-        }}
-      >
-        Start AR
-      </button>
+      {!inAR && (
+        <button
+          onClick={startAR}
+          style={{
+            position: "absolute",
+            top: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            padding: "12px 24px",
+            background: "white",
+            border: "none",
+            borderRadius: "25px",
+            fontSize: "16px",
+            cursor: "pointer",
+          }}
+        >
+          Start AR
+        </button>
+      )}
 
       {/* Food Selection */}
       <div
