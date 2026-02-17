@@ -1,33 +1,81 @@
 "use client";
 
-import { Canvas, useThree } from "@react-three/fiber";
-import { XR, createXRStore } from "@react-three/xr";
-import { useState, useRef } from "react";
+import { Canvas } from "@react-three/fiber";
+import { XR, createXRStore, useXRHitTest } from "@react-three/xr";
+import { useState, useRef, useCallback } from "react";
 import * as THREE from "three";
 import FoodModel from "../components/FoodModel";
 
 const store = createXRStore();
 
+function Reticle({ onPositionUpdate }: { onPositionUpdate: (pos: THREE.Vector3) => void }) {
+  const ref = useRef<THREE.Mesh>(null);
+  const lastPosition = useRef(new THREE.Vector3());
+
+  useXRHitTest((results: XRHitTestResult[], getWorldMatrix: any) => {
+    if (results.length > 0 && ref.current) {
+      const hitMatrix = getWorldMatrix(results[0]);
+      ref.current.visible = true;
+      ref.current.matrix.copy(hitMatrix);
+      ref.current.matrixAutoUpdate = false;
+
+      // Update position for placement
+      const position = new THREE.Vector3();
+      position.setFromMatrixPosition(hitMatrix);
+      lastPosition.current.copy(position);
+      onPositionUpdate(position);
+    } else if (ref.current) {
+      ref.current.visible = false;
+    }
+  }, "viewer");
+
+  return (
+    <mesh ref={ref} visible={false}>
+      <ringGeometry args={[0.1, 0.15, 32]} />
+      <meshBasicMaterial color="#00ff00" side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
 export default function ARPage() {
   const [objects, setObjects] = useState<any[]>([]);
   const [selected, setSelected] = useState("burger");
   const [inAR, setInAR] = useState(false);
+  const [reticlePosition, setReticlePosition] = useState<THREE.Vector3 | null>(null);
+  const [surfaceDetected, setSurfaceDetected] = useState(false);
 
   const startAR = async () => {
     await store.enterAR();
     setInAR(true);
   };
 
+  const handlePositionUpdate = useCallback((pos: THREE.Vector3) => {
+    setReticlePosition(pos);
+    setSurfaceDetected(true);
+  }, []);
+
   const placeObject = () => {
-    // Place object 1.5 meters in front of camera
-    setObjects([
-      ...objects,
-      {
-        id: Date.now(),
-        type: selected,
-        position: [0, -0.5, -1.5],
-      },
-    ]);
+    if (reticlePosition) {
+      // Place at reticle position
+      setObjects([
+        ...objects,
+        {
+          id: Date.now(),
+          type: selected,
+          position: reticlePosition.toArray(),
+        },
+      ]);
+    } else {
+      // Fallback: place in front of camera
+      setObjects([
+        ...objects,
+        {
+          id: Date.now(),
+          type: selected,
+          position: [0, -0.5, -1.5],
+        },
+      ]);
+    }
   };
 
   return (
@@ -51,6 +99,27 @@ export default function ARPage() {
         >
           Start AR
         </button>
+      )}
+
+      {/* Surface detection indicator */}
+      {inAR && (
+        <div
+          style={{
+            position: "absolute",
+            top: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            padding: "8px 16px",
+            background: surfaceDetected ? "rgba(0, 255, 0, 0.8)" : "rgba(255, 165, 0, 0.8)",
+            color: "white",
+            borderRadius: "20px",
+            fontSize: "12px",
+            fontWeight: "bold",
+          }}
+        >
+          {surfaceDetected ? "✓ Surface Detected" : "Scan floor..."}
+        </div>
       )}
 
       {/* Food Selection */}
@@ -119,6 +188,9 @@ export default function ARPage() {
           <ambientLight intensity={1} />
           <directionalLight position={[5, 10, 5]} intensity={1} />
 
+          {/* Reticle for surface detection */}
+          {inAR && <Reticle onPositionUpdate={handlePositionUpdate} />}
+
           {objects.map((obj: any) => (
             <FoodModel
               key={obj.id}
@@ -131,4 +203,3 @@ export default function ARPage() {
     </div>
   );
 }
-
