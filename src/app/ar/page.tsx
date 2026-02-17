@@ -6,7 +6,9 @@ import { useState, useEffect, useRef } from "react";
 import FoodModel from "../components/FoodModel";
 import Reticle from "../components/Reticle";
 
-const store = createXRStore();
+const store = createXRStore({
+  frameBufferScaling: 1,
+});
 
 function ARScene({ items, onReticlePosition }: any) {
   const reticleRef = useRef<any>(null);
@@ -94,7 +96,7 @@ export default function ARPage() {
       await store.enterAR();
     } catch (error) {
       console.error("AR Error:", error);
-      alert("AR not available. Make sure you're using Chrome on Android with ARCore support.");
+      alert(`AR Error: ${error}`);
     }
   };
 
@@ -109,7 +111,8 @@ export default function ARPage() {
 
       <Canvas
         camera={{ position: [0, 0, 0], fov: 75 }}
-        gl={{ alpha: true }}
+        gl={{ alpha: true, antialias: true }}
+        frameloop="demand"
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
       >
         <XR store={store}>
