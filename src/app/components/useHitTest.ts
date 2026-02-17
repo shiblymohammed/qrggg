@@ -4,21 +4,34 @@ import * as THREE from "three";
 
 export function useHitTest() {
   const { gl } = useThree();
-  const [reticleVisible, setReticleVisible] = useState(false);
+
   const reticleMatrix = useRef(new THREE.Matrix4());
   const hitTestSource = useRef<XRHitTestSource | null>(null);
-  const viewerSpace = useRef<XRReferenceSpace | null>(null);
+  const referenceSpace = useRef<XRReferenceSpace | null>(null);
+
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const session = gl.xr.getSession();
     if (!session) return;
 
-    session.requestReferenceSpace("viewer").then((space) => {
-      viewerSpace.current = space;
-      // Type assertion for hit-test API
-      (session as any).requestHitTestSource?.({ space }).then((source: XRHitTestSource) => {
-        hitTestSource.current = source;
+    let viewerSpace: XRReferenceSpace;
+
+    const setupHitTest = async () => {
+      referenceSpace.current =
+        await session.requestReferenceSpace("local-floor");
+
+      viewerSpace = await session.requestReferenceSpace("viewer");
+
+      hitTestSource.current = await (session as any).requestHitTestSource({
+        space: viewerSpace,
       });
+    };
+
+    setupHitTest();
+
+    session.addEventListener("end", () => {
+      hitTestSource.current = null;
     });
 
     return () => {
@@ -27,26 +40,23 @@ export function useHitTest() {
     };
   }, [gl]);
 
-  useFrame((_, delta, frame) => {
-    if (!frame || !hitTestSource.current) return;
-
-    const referenceSpace = gl.xr.getReferenceSpace();
-    if (!referenceSpace) return;
+  useFrame((state, delta, frame) => {
+    if (!frame || !hitTestSource.current || !referenceSpace.current) return;
 
     const hitTestResults = frame.getHitTestResults(hitTestSource.current);
 
     if (hitTestResults.length > 0) {
       const hit = hitTestResults[0];
-      const pose = hit.getPose(referenceSpace);
+      const pose = hit.getPose(referenceSpace.current);
 
       if (pose) {
         reticleMatrix.current.fromArray(pose.transform.matrix);
-        setReticleVisible(true);
+        setVisible(true);
       }
     } else {
-      setReticleVisible(false);
+      setVisible(false);
     }
   });
 
-  return { reticleMatrix, reticleVisible };
+  return { reticleMatrix, visible };
 }
