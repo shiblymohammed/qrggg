@@ -1,28 +1,51 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { XR, createXRStore } from "@react-three/xr";
-import { useState, useRef } from "react";
-import FoodModel from "../components/FoodModel";
-import Reticle from "../components/Reticle";
+import { XR, createXRStore, useXRHitTest } from "@react-three/xr";
+import { useRef, useState } from "react";
 import * as THREE from "three";
+import FoodModel from "../components/FoodModel";
 
 const store = createXRStore();
 
+function Reticle({ onPlace }: any) {
+  const ref = useRef<THREE.Mesh>(null);
+
+  useXRHitTest((results: XRHitTestResult[], getWorldMatrix: any) => {
+    if (results.length > 0 && ref.current) {
+      const hitMatrix = getWorldMatrix(results[0]);
+      ref.current.visible = true;
+      ref.current.matrix.copy(hitMatrix);
+      ref.current.matrixAutoUpdate = false;
+    } else if (ref.current) {
+      ref.current.visible = false;
+    }
+  }, "viewer");
+
+  return (
+    <mesh
+      ref={ref}
+      visible={false}
+      onClick={() => {
+        if (!ref.current) return;
+        const position = new THREE.Vector3();
+        position.setFromMatrixPosition(ref.current.matrix);
+        onPlace(position);
+      }}
+    >
+      <ringGeometry args={[0.1, 0.15, 32]} />
+      <meshBasicMaterial color="#00ff00" side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
 export default function ARPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [objects, setObjects] = useState<any[]>([]);
   const [selected, setSelected] = useState("burger");
-  const [surfaceDetected, setSurfaceDetected] = useState(false);
-  const reticleRef = useRef<THREE.Mesh>(null);
 
-  const placeItem = () => {
-    if (!reticleRef.current) return;
-
-    const position = new THREE.Vector3();
-    position.setFromMatrixPosition(reticleRef.current.matrix);
-
-    setItems([
-      ...items,
+  const addObject = (position: THREE.Vector3) => {
+    setObjects([
+      ...objects,
       {
         id: Date.now(),
         type: selected,
@@ -31,58 +54,27 @@ export default function ARPage() {
     ]);
   };
 
-  const handleStartAR = async () => {
-    try {
-      await store.enterAR();
-    } catch (error) {
-      console.error("AR Error:", error);
-      alert(`AR Error: ${error}`);
-    }
-  };
-
   return (
     <div className="w-screen h-screen bg-black relative">
       <button
-        onClick={handleStartAR}
+        onClick={() => store.enterAR()}
         className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full z-10"
       >
         Start AR
       </button>
 
-      {/* Surface detection indicator */}
-      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm z-10">
-        {surfaceDetected ? "✓ Surface Detected" : "Move camera to detect surface"}
-      </div>
-
-      <Canvas
-        gl={{ alpha: true }}
-        onCreated={({ gl }) => {
-          // Configure XR session to request hit-test
-          const originalRequestSession = navigator.xr?.requestSession.bind(navigator.xr);
-          if (navigator.xr && originalRequestSession) {
-            (navigator.xr as any).requestSession = function (mode: XRSessionMode, options?: any) {
-              const enhancedOptions = {
-                ...options,
-                requiredFeatures: [...(options?.requiredFeatures || []), "hit-test"],
-                optionalFeatures: [...(options?.optionalFeatures || []), "dom-overlay", "local-floor"],
-              };
-              return originalRequestSession(mode, enhancedOptions);
-            };
-          }
-        }}
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-      >
+      <Canvas>
         <XR store={store}>
-          <ambientLight intensity={2} />
-          <directionalLight position={[5, 10, 5]} intensity={2} />
+          <ambientLight intensity={1} />
+          <directionalLight position={[5, 10, 5]} intensity={1} />
 
-          <Reticle />
+          <Reticle onPlace={addObject} />
 
-          {items.map((item: any) => (
+          {objects.map((obj: any) => (
             <FoodModel
-              key={item.id}
-              url={`/models/${item.type}.glb`}
-              position={item.position}
+              key={obj.id}
+              url={`/models/${obj.type}.glb`}
+              position={obj.position}
             />
           ))}
         </XR>
@@ -119,7 +111,11 @@ export default function ARPage() {
       {/* Place Button */}
       <div className="absolute bottom-10 left-0 right-0 flex justify-center">
         <button
-          onClick={placeItem}
+          onClick={() => {
+            // Trigger reticle click programmatically
+            const reticlePosition = new THREE.Vector3(0, 0, -1);
+            addObject(reticlePosition);
+          }}
           className="bg-blue-500 text-white px-6 py-3 rounded-full"
         >
           Place
@@ -128,3 +124,4 @@ export default function ARPage() {
     </div>
   );
 }
+
