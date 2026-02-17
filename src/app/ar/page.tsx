@@ -1,98 +1,31 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { XR, createXRStore, useXRHitTest } from "@react-three/xr";
-import { useState, useEffect, useRef } from "react";
+import { XR, createXRStore } from "@react-three/xr";
+import { useState, useRef } from "react";
 import FoodModel from "../components/FoodModel";
 import Reticle from "../components/Reticle";
+import * as THREE from "three";
 
-const store = createXRStore({
-  frameBufferScaling: 1,
-});
-
-function ARScene({ items, onReticlePosition }: any) {
-  const reticleRef = useRef<any>(null);
-  const [reticleVisible, setReticleVisible] = useState(false);
-
-  useXRHitTest((results: any[], getWorldMatrix: any) => {
-    if (results.length > 0 && reticleRef.current) {
-      setReticleVisible(true);
-      const hitMatrix = getWorldMatrix(results[0]);
-      hitMatrix.decompose(
-        reticleRef.current.position,
-        reticleRef.current.quaternion,
-        reticleRef.current.scale
-      );
-      onReticlePosition(reticleRef.current.position.toArray());
-    } else {
-      setReticleVisible(false);
-    }
-  }, "viewer");
-
-  return (
-    <>
-      <color attach="background" args={["transparent"]} />
-      <ambientLight intensity={3} />
-      <directionalLight position={[0, 10, 5]} intensity={3} />
-      <pointLight position={[0, 2, 0]} intensity={2} />
-
-      {reticleVisible && (
-        <group ref={reticleRef}>
-          <Reticle />
-        </group>
-      )}
-
-      {items.map((item: any) => (
-        <FoodModel
-          key={item.id}
-          url={`/models/${item.type}.glb`}
-          position={item.position}
-        />
-      ))}
-
-      {/* Always visible test cubes - VERY BRIGHT */}
-      <mesh position={[0, 0.1, -0.5]}>
-        <boxGeometry args={[0.3, 0.3, 0.3]} />
-        <meshBasicMaterial color="#ff0000" />
-      </mesh>
-
-      <mesh position={[0.4, 0.1, -0.5]}>
-        <boxGeometry args={[0.2, 0.2, 0.2]} />
-        <meshBasicMaterial color="#0000ff" />
-      </mesh>
-
-      {/* Ground plane for reference */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[5, 5]} />
-        <meshBasicMaterial color="#00ff00" opacity={0.3} transparent />
-      </mesh>
-    </>
-  );
-}
+const store = createXRStore();
 
 export default function ARPage() {
   const [items, setItems] = useState<any[]>([]);
   const [selected, setSelected] = useState("burger");
-  const [arSupported, setArSupported] = useState(true);
-  const [reticlePosition, setReticlePosition] = useState([0, 0, -1]);
-
-  useEffect(() => {
-    if (navigator.xr) {
-      navigator.xr.isSessionSupported("immersive-ar").then((supported) => {
-        setArSupported(supported);
-      });
-    } else {
-      setArSupported(false);
-    }
-  }, []);
+  const reticleRef = useRef<THREE.Mesh>(null);
 
   const placeItem = () => {
+    if (!reticleRef.current) return;
+
+    const position = new THREE.Vector3();
+    position.setFromMatrixPosition(reticleRef.current.matrix);
+
     setItems([
       ...items,
       {
         id: Date.now(),
         type: selected,
-        position: [...reticlePosition],
+        position: position.toArray(),
       },
     ]);
   };
@@ -112,17 +45,26 @@ export default function ARPage() {
         onClick={handleStartAR}
         className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full z-10"
       >
-        {arSupported ? "Start AR" : "AR Not Supported"}
+        Start AR
       </button>
 
       <Canvas
-        camera={{ position: [0, 0, 0], fov: 75 }}
-        gl={{ alpha: true, antialias: true }}
-        frameloop="always"
+        gl={{ alpha: true }}
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
       >
         <XR store={store}>
-          <ARScene items={items} onReticlePosition={setReticlePosition} />
+          <ambientLight intensity={1} />
+          <directionalLight position={[5, 10, 5]} intensity={1} />
+
+          <Reticle />
+
+          {items.map((item: any) => (
+            <FoodModel
+              key={item.id}
+              url={`/models/${item.type}.glb`}
+              position={item.position}
+            />
+          ))}
         </XR>
       </Canvas>
 
