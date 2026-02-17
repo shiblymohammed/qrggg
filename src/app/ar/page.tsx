@@ -1,16 +1,54 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { XR, createXRStore } from "@react-three/xr";
-import { useState, useEffect } from "react";
+import { XR, createXRStore, useXRHitTest } from "@react-three/xr";
+import { useState, useEffect, useRef } from "react";
 import FoodModel from "../components/FoodModel";
+import Reticle from "../components/Reticle";
+import type { Matrix4 } from "three";
 
 const store = createXRStore();
+
+function ARScene({ items, onReticlePosition }: any) {
+  const reticleRef = useRef<any>(null);
+
+  useXRHitTest((results: any[], getWorldMatrix: any) => {
+    if (results.length > 0 && reticleRef.current) {
+      const hitMatrix = getWorldMatrix(results[0]);
+      hitMatrix.decompose(
+        reticleRef.current.position,
+        reticleRef.current.quaternion,
+        reticleRef.current.scale
+      );
+      onReticlePosition(reticleRef.current.position.toArray());
+    }
+  }, "viewer");
+
+  return (
+    <>
+      <ambientLight intensity={1} />
+      <directionalLight position={[0, 5, 5]} intensity={1} />
+
+      <group ref={reticleRef}>
+        <Reticle />
+      </group>
+
+      {items.map((item: any) => (
+        <FoodModel
+          key={item.id}
+          url={`/models/${item.type}.glb`}
+          position={item.position}
+        />
+      ))}
+    </>
+  );
+}
 
 export default function ARPage() {
   const [items, setItems] = useState<any[]>([]);
   const [selected, setSelected] = useState("burger");
   const [arSupported, setArSupported] = useState(true);
+  const [reticlePosition, setReticlePosition] = useState([0, 0, -1]);
 
   useEffect(() => {
     if (navigator.xr) {
@@ -28,7 +66,7 @@ export default function ARPage() {
       {
         id: Date.now(),
         type: selected,
-        position: [0, 0, -1],
+        position: [...reticlePosition],
       },
     ]);
   };
@@ -53,15 +91,7 @@ export default function ARPage() {
 
       <Canvas>
         <XR store={store}>
-          <ambientLight intensity={1} />
-
-          {items.map((item) => (
-            <FoodModel
-              key={item.id}
-              url={`/models/${item.type}.glb`}
-              position={item.position}
-            />
-          ))}
+          <ARScene items={items} onReticlePosition={setReticlePosition} />
         </XR>
       </Canvas>
 
