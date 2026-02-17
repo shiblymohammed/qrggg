@@ -16,8 +16,8 @@ export default function Reticle() {
 
   return (
     <mesh ref={meshRef}>
-      <ringGeometry args={[0.15, 0.2, 32]} />
-      <meshBasicMaterial color="#00ff00" side={THREE.DoubleSide} />
+      <ringGeometry args={[0.1, 0.15, 32]} />
+      <meshBasicMaterial color="#00ff00" side={THREE.DoubleSide} transparent opacity={0.8} />
     </mesh>
   );
 }

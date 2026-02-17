@@ -12,6 +12,7 @@ const store = createXRStore();
 export default function ARPage() {
   const [items, setItems] = useState<any[]>([]);
   const [selected, setSelected] = useState("burger");
+  const [surfaceDetected, setSurfaceDetected] = useState(false);
   const reticleRef = useRef<THREE.Mesh>(null);
 
   const placeItem = () => {
@@ -48,6 +49,11 @@ export default function ARPage() {
         Start AR
       </button>
 
+      {/* Surface detection indicator */}
+      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm z-10">
+        {surfaceDetected ? "✓ Surface Detected" : "Move camera to detect surface"}
+      </div>
+
       <Canvas
         gl={{ alpha: true }}
         onCreated={({ gl }) => {
@@ -67,14 +73,8 @@ export default function ARPage() {
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
       >
         <XR store={store}>
-          <ambientLight intensity={1} />
-          <directionalLight position={[5, 10, 5]} intensity={1} />
-
-          {/* Test cube - should always be visible */}
-          <mesh position={[0, 0, -1]}>
-            <boxGeometry args={[0.2, 0.2, 0.2]} />
-            <meshBasicMaterial color="red" />
-          </mesh>
+          <ambientLight intensity={2} />
+          <directionalLight position={[5, 10, 5]} intensity={2} />
 
           <Reticle />
 
