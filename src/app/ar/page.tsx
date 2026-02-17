@@ -50,11 +50,31 @@ export default function ARPage() {
 
       <Canvas
         gl={{ alpha: true }}
+        onCreated={({ gl }) => {
+          // Configure XR session to request hit-test
+          const originalRequestSession = navigator.xr?.requestSession.bind(navigator.xr);
+          if (navigator.xr && originalRequestSession) {
+            (navigator.xr as any).requestSession = function (mode: XRSessionMode, options?: any) {
+              const enhancedOptions = {
+                ...options,
+                requiredFeatures: [...(options?.requiredFeatures || []), "hit-test"],
+                optionalFeatures: [...(options?.optionalFeatures || []), "dom-overlay", "local-floor"],
+              };
+              return originalRequestSession(mode, enhancedOptions);
+            };
+          }
+        }}
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
       >
         <XR store={store}>
           <ambientLight intensity={1} />
           <directionalLight position={[5, 10, 5]} intensity={1} />
+
+          {/* Test cube - should always be visible */}
+          <mesh position={[0, 0, -1]}>
+            <boxGeometry args={[0.2, 0.2, 0.2]} />
+            <meshBasicMaterial color="red" />
+          </mesh>
 
           <Reticle />
 
