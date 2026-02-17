@@ -48,9 +48,15 @@ function ARScene({ items, onReticlePosition }: any) {
       ))}
 
       {/* Always visible test cube to verify AR is working */}
-      <mesh position={[0, 0, -0.5]}>
+      <mesh position={[0, 0, -1]}>
+        <boxGeometry args={[0.2, 0.2, 0.2]} />
+        <meshStandardMaterial color="red" emissive="red" emissiveIntensity={0.5} />
+      </mesh>
+
+      {/* Another cube to the side */}
+      <mesh position={[0.3, 0, -1]}>
         <boxGeometry args={[0.1, 0.1, 0.1]} />
-        <meshStandardMaterial color="red" />
+        <meshStandardMaterial color="blue" emissive="blue" emissiveIntensity={0.5} />
       </mesh>
     </>
   );
@@ -101,7 +107,11 @@ export default function ARPage() {
         {arSupported ? "Start AR" : "AR Not Supported"}
       </button>
 
-      <Canvas>
+      <Canvas
+        camera={{ position: [0, 0, 0], fov: 75 }}
+        gl={{ alpha: true }}
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+      >
         <XR store={store}>
           <ARScene items={items} onReticlePosition={setReticlePosition} />
         </XR>
